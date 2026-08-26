@@ -1,6 +1,10 @@
 EntityConfigId,ImagePath,Name,Type
 sunflower,images/sunflower.jpg,Sunflower,Plant
 peashooter,images/peashooter.webp,Peashooter,Plant
-basic_zombie,images/zombie.png,Zombie,Zombie
-peashooter_pea,images/peashooter.webp,Pea,Projectile
-,,,
+basic_zombie,images/Zombie1.webp,Zombie,Zombie
+peashooter_pea,images/ProjectilePea.webp,Pea,Projectile
+sunflower_sun,images/Sun.webp,Sun,Resource
+cherry_bomb,images/Cherry_Bomb1.webp,Cherry Bomb,Plant
+potato_mine,images/Potato_Mine1.webp,Potato Mine,Plant
+chomper,images/Chomper1.webp,Chomper,Plant
+wall_nut,images/Wall-nut1.webp,Wall Nut,Plant
