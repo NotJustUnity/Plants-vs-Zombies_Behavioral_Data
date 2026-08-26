@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Editor</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Additional styling for clean image presentation inside the data table */
+        .csv-image {
+            max-width: 80px;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 3px;
+            display: block;
+            margin: 0 auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+    <h1>CSV Editor</h1>
+    <div class="controls">
+        <select id="csv-select">
+            <option value="">Select CSV file...</option>
+        </select>
+    </div>
+    
+    <!-- Structured data table component -->
+    <table id="csv-table-el" style="display: none;">
+        <thead id="csv-headers"></thead>
+        <tbody id="csv-content"></tbody>
+    </table>
+    
+    <div id="csv-status">
+        <p>Select a CSV file to begin</p>
+    </div>
+
+    <div class="edit-actions">
+        <button class="add-row">Add Row</button>
+        <button class="delete-row">Delete Row</button>
+    </div>
+
+    <script>
+        const csvSelect = document.getElementById('csv-select');
+        const csvTableEl = document.getElementById('csv-table-el');
+        const csvHeaders = document.getElementById('csv-headers');
+        const csvContent = document.getElementById('csv-content');
+        const csvStatus = document.getElementById('csv-status');
+        const addRowBtn = document.querySelector('.add-row');
+        const deleteRowBtn = document.querySelector('.delete-row');
+
+        let currentHeaders = []; // Global state to reuse headers when adding new rows
+
+        // Fetch and populate CSV file dropdown selection list
+        async function loadCSVs() {
+            try {
+                const response = await fetch('/api/csv-list');
+                const csvFiles = await response.json();
+                csvSelect.innerHTML = '<option value="">Select CSV file...</option>';
+                csvFiles.forEach(f => {
+                    const opt = document.createElement('option');
+                    opt.value = f;
+                    opt.textContent = f;
+                    csvSelect.appendChild(opt);
+                });
+            } catch (err) {
+                console.error("Error loading CSV list:", err);
+            }
+        }
+
+        // Parse dataset backend responses and render interactive elements
+        async function loadCSVData(filename) {
+            try {
+                const resp = await fetch(`/api/load-csv?filename=${filename}`);
+                const data = await resp.json();
+                
+                csvHeaders.innerHTML = '';
+                csvContent.innerHTML = '';
+                csvStatus.style.display = 'none';
+                csvTableEl.style.display = 'table';
+
+                // Build structural table headers
+                currentHeaders = data.headers || [];
+                const headerRow = document.createElement('tr');
+                currentHeaders.forEach(h => {
+                    const th = document.createElement('th');
+                    th.textContent = h;
+                    headerRow.appendChild(th);
+                });
+                
+                // Append specific column dedicated to localized images
+                const imageTh = document.createElement('th');
+                imageTh.textContent = 'Image';
+                headerRow.appendChild(imageTh);
+                csvHeaders.appendChild(headerRow);
+
+                // Build dynamic rows dynamically matching schema attributes
+                if (data.data && data.data.length > 0) {
+                    for (const row of data.data) {
+                        const tr = document.createElement('tr');
+                        
+                        // Populate clean alphanumeric records
+                        currentHeaders.forEach(h => {
+                            const td = document.createElement('td');
+                            td.textContent = row[h] || '';
+                            td.setAttribute('contenteditable', 'true');
+                            td.dataset.field = h;
+                            td.dataset.rowId = row.EntityConfigId || '';
+                            tr.appendChild(td);
+                        });
+
+                        // Establish isolated table data element serving asset nodes
+                        const imageTd = document.createElement('td');
+                        tr.appendChild(imageTd);
+                        csvContent.appendChild(tr);
+
+                        // Asynchronously request target images linked to EntityConfigId
+                        const entityId = row.EntityConfigId;
+                        if (entityId) {
+                            try {
+                                const imgResp = await fetch(`/api/entity-image/${entityId}`);
+                                const imgData = await imgResp.json();
+                                
+                                if (imgData.imagePath) {
+                                    // Handle missing static routes by mapping directly to Flask routing expectations
+                                    let imgSrc = imgData.imagePath;
+                                    if (!imgSrc.startsWith('/static/') && !imgSrc.startsWith('static/')) {
+                                        if (imgSrc.startsWith('/')) {
+                                            imgSrc = imgSrc.substring(1);
+                                        }
+                                        imgSrc = `/static/${imgSrc}`;
+                                    }
+                                    
+                                    imageTd.innerHTML = `<img src="${imgSrc}" alt="Entity Image" style="max-width: 100px; height: auto;">`;
+                                }
+                            } catch (imgErr) {
+                                console.error(`Error loading image for entity ${entityId}:`, imgErr);
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Error loading CSV data:", err);
+            }
+        }
+
+        // Handle dropdown select options interaction adjustments
+        csvSelect.addEventListener('change', async (e) => {
+            const fname = e.target.value;
+            if (fname) {
+                await loadCSVData(fname);
+            } else {
+                csvTableEl.style.display = 'none';
+                csvStatus.style.display = 'block';
+            }
+        });
+
+        // Inject empty user input container configurations
+        addRowBtn.addEventListener('click', () => {
+            const curSel = csvSelect.value;
+            if (!curSel || currentHeaders.length === 0) return;
+
+            const tr = document.createElement('tr');
+            currentHeaders.forEach(h => {
+                const td = document.createElement('td');
+                td.textContent = '';
+                td.setAttribute('contenteditable', 'true');
+                td.dataset.field = h;
+                td.dataset.rowId = '';
+                tr.appendChild(td);
+            });
+            
+            // Generate empty asset target placeholder columns safely
+            const imageTd = document.createElement('td');
+            tr.appendChild(imageTd);
+            
+            csvContent.appendChild(tr);
+        });
+
+        // Strip targeted matrix structural elements locally
+        deleteRowBtn.addEventListener('click', () => {
+            const editable = csvContent.querySelector('td[contenteditable="true"]:focus-within');
+            if (editable) {
+                editable.parentElement.remove();
+            } else {
+                // Safely drop the terminal sibling element if active selections do not exist
+                if (csvContent.lastElementChild) {
+                    csvContent.lastElementChild.remove();
+                }
+            }
+        });
+
+        // Program entry initialization triggers
+        loadCSVs();
+    </script>
+</body>
+</html>

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Editor - GitHub Pages</title>
+    <style>
+        :root {
+            --primary: #4a90a4;
+            --bg: #f5f5f5;
+            --card: white;
+            --text: #333;
+            --success: #27ae60;
+            --danger: #e74c3c;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 { color: var(--text); margin-bottom: 1rem; }
+
+        /* CSV Selector */
+        .csv-selector {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: var(--card);
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+
+        .csv-selector label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .csv-selector select {
+            width: 100%;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: white;
+        }
+
+        /* Table */
+        .csv-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+            background: var(--card);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .csv-table th,
+        .csv-table td {
+            border: 1px solid #dee2e6;
+            padding: 0.75rem;
+            text-align: left;
+            min-width: 120px;
+        }
+
+        .csv-table th {
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+        }
+
+        .csv-table tbody tr:nth-child(even) { background: #f8f9fa; }
+        .csv-table tbody tr:hover { background: #e9ecef; }
+
+        /* Images */
+        .csv-image {
+            max-width: 100px;
+            max-height: 100px;
+            object-fit: contain;
+            border: 2px solid var(--primary);
+            border-radius: 4px;
+            background: #f0f0f0;
+        }
+
+        /* Actions */
+        .actions {
+            margin: 2rem 0;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+
+        .action-btn:hover { background: #357a8d; }
+        .action-btn.add { background: var(--success); }
+        .action-btn.add:hover { background: #219653; }
+        .action-btn.delete { background: var(--danger); }
+        .action-btn.delete:hover { background: #c0392b; }
+        .action-btn.export { background: #6c757d; }
+        .action-btn.export:hover { background: #5a6268; }
+
+        /* Output */
+        .csv-output {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+<h1>CSV Editor (Static)</h1>
+
+<div class="csv-selector">
+    <label for="csv-select">Select CSV File:</label>
+    <select id="csv-select">
+        <option value="">-- Select a CSV file --</option>
+        <option value="csv/entity.csv">entity.csv</option>
+        <option value="csv/plants.csv">plants.csv</option>
+        <option value="csv/zombies.csv">zombies.csv</option>
+        <option value="csv/items.csv">items.csv</option>
+    </select>
+</div>
+
+<table class="csv-table" id="csv-table">
+    <thead>
+        <tr>
+            <th>Loading...</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+
+<div class="actions">
+    <button class="action-btn add" onclick="addRow()">Add Row</button>
+    <button class="action-btn delete" onclick="deleteRow()">Delete Row</button>
+    <button class="action-btn export" onclick="exportCSV()">Export CSV</button>
+</div>
+
+<div class="csv-output" id="csv-output">No CSV loaded</div>
+
+<script>
+    // CSV files available (relative paths from GitHub Pages root)
+    const csvFiles = [
+        { key: 'entity', name: 'entity.csv', hasEntityId: true },
+        { key: 'plants', name: 'plants.csv', hasEntityId: true },
+        { key: 'zombies', name: 'zombies.csv', hasEntityId: true },
+        { key: 'items', name: 'items.csv', hasEntityId: false }
+    ];
+
+    let currentData = [];
+    let currentHeaders = [];
+    let entityImageMap = {};
+
+    // Populate CSV selector
+    const select = document.getElementById('csv-select');
+    csvFiles.forEach(f => {
+        const opt = document.createElement('option');
+        opt.value = f.name;
+        opt.textContent = f.name;
+        select.appendChild(opt);
+    });
+
+    // Load and display CSV data
+    async function loadCSVData(filename) {
+        // Reset state
+        currentData = [];
+        currentHeaders = [];
+        entityImageMap = {};
+        const table = document.getElementById('csv-table');
+        const tbody = table.querySelector('tbody');
+        tbody.innerHTML = '';
+
+        const output = document.getElementById('csv-output');
+        output.textContent = 'Loading...';
+
+        try {
+            // Fetch CSV content
+            const resp = await fetch(filename);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const text = await resp.text();
+
+            // Parse with simple CSV parser (no external lib needed)
+            const lines = text.split(/\r?\n/).filter(l => l.trim());
+            if (lines.length === 0) throw new Error('Empty CSV');
+
+            // Parse headers
+            const headers = lines[0].split(',').map(h => h.trim());
+            currentHeaders = headers;
+
+            // Parse data rows
+            currentData = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cells = lines[i].split(',').map(c => c.trim());
+                const row = {};
+                headers.forEach((h, idx) => {
+                    row[h] = idx < cells.length ? cells[idx] : '';
+                });
+                currentData.push(row);
+            }
+
+            // Load entity image mapping if this CSV has EntityConfigId
+            if (f.hasEntityId) {
+                try {
+                    const entityResp = await fetch('csv/entity.csv');
+                    if (!entityResp.ok) throw new Error('entity.csv not found');
+                    const entityText = await entityResp.text();
+                    const entLines = entityText.split(/\r?\n/).filter(l => l.trim());
+                    entityImageMap = {};
+                    // Skip header, parse rows
+                    for (let i = 1; i < entLines.length; i++) {
+                        const entCells = entLines[i].split(',').map(c => c.trim());
+                        const eid = entCells[0] || '';
+                        const img = entCells[1] || '';
+                        if (eid) entityImageMap[eid] = img;
+                    }
+                } catch (e) {
+                    console.log('Could not load entity image map:', e);
+                }
+            }
+
+            // Display the table
+            displayTable();
+
+            output.textContent = `Loaded: ${filename} (${currentData.length} rows)`;
+        } catch (err) {
+            console.error(err);
+            output.textContent = `Error loading CSV: ${err.message}`;
+            // Show fallback table with headers only
+            displayFallback();
+        }
+    }
+
+    function displayTable() {
+        const thead = document.createElement('tr');
+        currentHeaders.forEach(h => {
+            const th = document.createElement('th');
+            th.textContent = h;
+            thead.appendChild(th);
+        });
+        document.querySelector('#csv-table thead').appendChild(thead);
+
+        const tbody = document.querySelector('#csv-table tbody');
+        tbody.innerHTML = '';
+
+        currentData.forEach((row, rowIdx) => {
+            const tr = document.createElement('tr');
+
+            currentHeaders.forEach((h, colIdx) => {
+                const td = document.createElement('td');
+                td.setAttribute('contenteditable', 'true');
+                td.setAttribute('data-row', rowIdx);
+                td.setAttribute('data-field', h);
+                td.textContent = row[h] || '';
+                tr.appendChild(td);
+            });
+
+            // Add image if EntityConfigId exists and has mapping
+            const entityId = row.EntityConfigId || '';
+            if (entityId && entityImageMap[entityId]) {
+                const imgCell = document.createElement('td');
+                const img = document.createElement('img');
+                img.className = 'csv-image';
+                img.src = entityImageMap[entityId];
+                img.alt = entityId;
+                imgCell.appendChild(img);
+                tr.appendChild(imgCell);
+            }
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    function displayFallback() {
+        const thead = document.createElement('tr');
+        currentHeaders.forEach(h => {
+            const th = document.createElement('th');
+            th.textContent = h;
+            thead.appendChild(th);
+        });
+        document.querySelector('#csv-table thead').appendChild(thead);
+
+        const tbody = document.querySelector('#csv-table tbody');
+        tbody.innerHTML = `<tr><td colspan="${currentHeaders.length}">Error loading data</td></tr>`;
+    }
+
+    // Add new row
+    function addRow() {
+        if (!currentData.length) {
+            alert('Load a CSV file first');
+            return;
+        }
+
+        // Create new row with empty values for all headers
+        const newRow = {};
+        currentHeaders.forEach(h => newRow[h] = '');
+
+        // Insert at end
+        currentData.push(newRow);
+
+        // Refresh display
+        displayTable();
+    }
+
+    // Delete selected row (delete the first editable row found)
+    function deleteRow() {
+        if (!currentData.length) return;
+
+        // Find first cell that's contenteditable and has data
+        const editable = document.querySelector('#csv-table tbody td[contenteditable="true"]');
+        if (!editable) {
+            // If no editable cells, just remove last row
+            currentData.pop();
+            displayTable();
+            return;
+        }
+
+        const rowIdx = parseInt(editable.dataset.row);
+        if (!isNaN(rowIdx) && rowIdx >= 0 && rowIdx < currentData.length) {
+            currentData.splice(rowIdx, 1);
+        } else {
+            currentData.pop();
+        }
+
+        displayTable();
+    }
+
+    // Export current data as CSV string
+    function exportCSV() {
+        if (!currentData.length) {
+            alert('No data to export');
+            return;
+        }
+
+        // Build header
+        const headerRow = currentHeaders.join(',');
+
+        // Build data rows
+        const dataRows = currentData.map(row =>
+            currentHeaders.map(h => {
+                const val = row[h] || '';
+                // Simple CSV escaping: if value contains comma, quote, or newline, wrap in quotes
+                if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+                    return `"${val.replace(/"/g, '""')}"`;
+                }
+                return val;
+            }).join(',')
+        );
+
+        const csvContent = [headerRow, ...dataRows].join('\n');
+
+        // Trigger download
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'edited-data.csv';
+        link.click();
+    }
+
+    // Initialize: load first CSV automatically
+    document.getElementById('csv-select').addEventListener('change', (e) => {
+        const selected = csvFiles.find(f => f.name === e.target.value);
+        if (selected) {
+            loadCSVData('csv/' + selected.key + '.csv');
+        }
+    });
+
+    // Auto-load entity.csv on startup so image mapping is available
+    window.addEventListener('load', () => {
+        loadCSVData('csv/entity.csv');
+    });
+</script>
+
+<p style="margin-top: 2rem; font-size: 0.85rem; color: #666;">
+    CSV files are loaded from the ./csv/ directory. Edit cells directly (double-click or tap), use action buttons to add/delete rows, and export when done.
+</p>
+
+</body>
+</html>
