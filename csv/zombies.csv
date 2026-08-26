@@ -1,5 +1,0 @@
-EntityConfigId,Name,Health,Speed,Attack
-zombie,Zombie,150,1,20
-conehead_zombie,Conehead Zombie,300,1,25
-bucket_zombie,Bucket Zombie,500,1,35
-puff_shroom,Puff-Shroom,75,2,15

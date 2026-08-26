@@ -1,5 +1,6 @@
-EntityConfigId,ImagePath,Name
-sunflower,images/sunflower.jpg,Sunflower
-peashooter,images/peashooter.webp,Peashooter
-zombie,images/zombie.png,Zombie
-
+EntityConfigId,ImagePath,Name,Type
+sunflower,images/sunflower.jpg,Sunflower,Plant
+peashooter,images/peashooter.webp,Peashooter,Plant
+basic_zombie,images/zombie.png,Zombie,Zombie
+peashooter_pea,images/peashooter.webp,Pea,Projectile
+,,,
