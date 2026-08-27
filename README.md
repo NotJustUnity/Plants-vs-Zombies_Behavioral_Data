@@ -1,6 +1,8 @@
-# CSV Editor
+# Plants vs Zombies Behavioral Data
 
-A web-based CSV editor application built with Flask for managing game entity data.
+A web-based CSV editor application built with Flask for for previewing behavioral data of entities in PvZ.
+
+![Preview](images\Preview.PNG)
 
 ## Overview
 
@@ -46,9 +48,10 @@ webapp/
 
 ## Usage
 
-1. Run the application: `python app.py`
-2. Open your browser to `http://127.0.0.1:5000`
-3. Select a CSV file from the dropdown to view and edit its contents
+1. Run venv .venv\Scripts\activate.bat
+2. Run the application: `python app.py`
+3. Open your browser to `http://127.0.0.1:5000`
+4. Select a CSV file from the dropdown to view and edit its contents
 
 ## CSV Format
 
