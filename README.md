@@ -4,7 +4,7 @@ A web-based CSV editor application built with Flask for for previewing behaviora
 
 <img src="images\Preview.png" alt="Preview" width="500" align="center">
 
-
+[Youtube Videos](https://www.youtube.com/playlist?list=PLWdUnCEHP5u0)
 ## Overview
 
 This application provides a web interface for viewing, editing, adding, and deleting rows in CSV files. It's designed for managing game entity configurations including sprites, types, and associated data.
