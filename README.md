@@ -2,7 +2,8 @@
 
 A web-based CSV editor application built with Flask for for previewing behavioral data of entities in PvZ.
 
-![Preview](images\Preview.png)
+<img src="images\Preview.png" alt="Preview" width="500" align="center">
+
 
 ## Overview
 
